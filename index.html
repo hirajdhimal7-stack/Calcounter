@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Fuel">
+<title>Fuel</title>
+<style>
+  :root{
+    --bg:#0A0E14; --surface:#12161F; --surface-2:#181D28; --border:#232838; --border-2:#2E3548;
+    --text:#E8EAED; --text-dim:#8B92A5; --text-faint:#565D72;
+    --gold:#E8A33D; --gold-dim:#8A6529; --green:#3FBF74; --green-dim:#1E4A32; --red:#F0625F; --red-dim:#4A2320;
+    --blue:#5B9FE8; --blue-dim:#1E3A5C;
+    --mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0; background:var(--bg); color:var(--text); font-family:var(--sans); overflow-x:hidden;}
+  body{padding-bottom:env(safe-area-inset-bottom); padding-top:env(safe-area-inset-top); min-height:100vh;}
+  .wrap{max-width:520px; margin:0 auto; padding:0 16px 100px;}
+
+  .topbar{display:flex; align-items:center; justify-content:space-between; padding:18px 16px 8px; max-width:520px; margin:0 auto;}
+  .brand{font-size:13px; letter-spacing:0.14em; color:var(--text-faint); text-transform:uppercase; font-weight:600;}
+  .topbar-right{display:flex; align-items:center; gap:12px;}
+  .clock-txt{font-family:var(--mono); font-size:12px; color:var(--text-faint);}
+  .sync-dot{width:8px; height:8px; border-radius:50%; background:var(--text-faint);}
+  .sync-dot.ok{background:var(--green);} .sync-dot.busy{background:var(--gold); animation:pulse 1s infinite;} .sync-dot.err{background:var(--red);}
+  @keyframes pulse{0%,100%{opacity:1;} 50%{opacity:0.35;}}
+  .icon-btn{width:28px; height:28px; border-radius:8px; background:var(--surface); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; color:var(--text-dim); font-size:14px; cursor:pointer;}
+
+  .tabs{display:flex; gap:0; margin-top:14px; border-bottom:1px solid var(--border); overflow-x:auto;}
+  .tabs::-webkit-scrollbar{display:none;}
+  .tab{padding:10px 4px; margin-right:20px; font-size:13px; color:var(--text-faint); cursor:pointer; border-bottom:2px solid transparent; font-weight:600; white-space:nowrap;}
+  .tab.active{color:var(--gold); border-bottom-color:var(--gold);}
+  .panel{display:none;} .panel.visible{display:block;}
+
+  .card{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:18px; margin-top:16px;}
+  .card-title{font-size:13px; letter-spacing:0.06em; text-transform:uppercase; color:var(--text-dim); margin-bottom:12px; font-weight:600; display:flex; justify-content:space-between; align-items:center;}
+
+  /* today hero */
+  .today-hero{display:flex; gap:14px;}
+  .ring-block{flex:1; text-align:center;}
+  .ring-num{font-family:var(--mono); font-size:26px; font-weight:700;}
+  .ring-lab{font-size:10.5px; color:var(--text-faint); text-transform:uppercase; letter-spacing:0.06em; margin-top:2px;}
+  .ring-track{height:6px; background:var(--surface-2); border-radius:4px; overflow:hidden; margin-top:8px;}
+  .ring-fill{height:100%; border-radius:4px;}
+  .ring-fill.cal{background:var(--gold);}
+  .ring-fill.protein{background:var(--blue);}
+  .ring-sub{font-size:10.5px; color:var(--text-faint); margin-top:4px;}
+  .goals-link{display:block; text-align:center; font-size:11px; color:var(--text-faint); margin-top:14px; cursor:pointer; text-decoration:underline;}
+  .goals-edit{display:none; margin-top:12px;}
+  .goals-edit.visible{display:block;}
+
+  select, .text-input{
+    flex:1; background:var(--surface-2); border:1px solid var(--border); border-radius:10px;
+    padding:11px 13px; color:var(--text); font-family:var(--sans); font-size:14px; outline:none;
+    -webkit-appearance:none; appearance:none; min-width:0;
+  }
+  .text-input::placeholder{color:var(--text-faint);}
+  .field-row{display:flex; gap:8px; margin-bottom:10px;}
+
+  .add-btn{width:100%; padding:13px 0; border-radius:10px; border:none; font-family:var(--sans); font-size:15px; font-weight:600; cursor:pointer; background:var(--gold); color:#1A1200;}
+  .add-btn:active{opacity:0.85;}
+  .add-btn.secondary{background:var(--surface-2); color:var(--text); border:1px solid var(--border-2);}
+  .add-btn.ai{background:var(--blue-dim); color:var(--blue); border:1px solid var(--blue);}
+  .add-btn:disabled{opacity:0.5;}
+
+  .hint{font-size:12px; color:var(--text-faint); margin-top:10px; line-height:1.5;}
+
+  .chips{display:flex; gap:8px; margin-top:0; overflow-x:auto; padding-bottom:4px;}
+  .chips::-webkit-scrollbar{display:none;}
+  .chip{flex:0 0 auto; padding:7px 13px; border-radius:100px; font-size:12.5px; background:var(--surface-2); border:1px solid var(--border); color:var(--text-dim); white-space:nowrap; cursor:pointer;}
+  .chip.active{background:var(--surface); border-color:var(--gold-dim); color:var(--gold);}
+  .quick-chip{flex:0 0 auto; padding:8px 13px; border-radius:100px; font-size:12px; background:var(--surface-2); border:1px solid var(--border-2); color:var(--text); cursor:pointer; white-space:nowrap;}
+  .quick-chip .n{font-weight:600;}
+  .quick-chip .m{color:var(--text-faint); font-size:10.5px; margin-left:4px;}
+
+  .entry-row{display:flex; align-items:center; justify-content:space-between; padding:11px 4px; border-bottom:1px solid var(--border); gap:10px;}
+  .entry-row:last-child{border-bottom:none;}
+  .entry-left{display:flex; gap:10px; align-items:baseline; min-width:0;}
+  .entry-time{font-family:var(--mono); font-size:11px; color:var(--text-faint); flex:0 0 auto;}
+  .entry-food{font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .entry-macros{display:flex; gap:8px; flex:0 0 auto; align-items:center;}
+  .entry-cal{font-family:var(--mono); font-size:13px; color:var(--gold); font-weight:600;}
+  .entry-protein{font-family:var(--mono); font-size:11px; color:var(--blue);}
+  .entry-del{color:var(--text-faint); font-size:16px; cursor:pointer; padding:2px 4px;}
+
+  .empty{text-align:center; padding:30px 20px; color:var(--text-faint); font-size:13px;}
+
+  .nav-row{display:flex; align-items:center; justify-content:space-between; margin-top:0;}
+  .nav-label{font-family:var(--mono); font-size:13px; color:var(--text);}
+
+  .bd-row{margin-bottom:12px;}
+  .bd-top{display:flex; justify-content:space-between; font-size:13px; margin-bottom:5px;}
+  .bd-name{color:var(--text); font-weight:600;}
+  .bd-amt{font-family:var(--mono); color:var(--text-dim);}
+  .bd-track{height:6px; background:var(--surface-2); border-radius:4px; overflow:hidden;}
+  .bd-fill{height:100%; border-radius:4px; background:var(--gold);}
+
+  .src-list{display:flex; flex-direction:column;}
+  .src-item{display:flex; align-items:center; justify-content:space-between; padding:9px 2px; border-bottom:1px solid var(--border); gap:8px;}
+  .src-item:last-child{border-bottom:none;}
+  .src-name{font-size:14px; flex:1;}
+  .src-del{color:var(--text-faint); font-size:16px; cursor:pointer; padding:2px 6px; flex:0 0 auto;}
+
+  .status-row{display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-dim); margin-bottom:12px;}
+  .ai-out{font-size:13px; color:var(--text-dim); margin-top:8px;}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="brand">Fuel</div>
+  <div class="topbar-right">
+    <div class="clock-txt" id="clockTxt"></div>
+    <div class="sync-dot" id="syncDot"></div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="tabs">
+    <div class="tab active" data-panel="todayPanel">Today</div>
+    <div class="tab" data-panel="progressPanel">Progress</div>
+    <div class="tab" data-panel="quickPanel">Quick Foods</div>
+    <div class="tab" data-panel="syncPanel">Sync</div>
+  </div>
+
+  <div class="panel visible" id="todayPanel">
+    <div class="card">
+      <div class="today-hero">
+        <div class="ring-block">
+          <div class="ring-num" id="todayCalNum">0</div>
+          <div class="ring-lab">Calories</div>
+          <div class="ring-track"><div class="ring-fill cal" id="calFill" style="width:0%;"></div></div>
+          <div class="ring-sub" id="calGoalSub"></div>
+        </div>
+        <div class="ring-block">
+          <div class="ring-num" id="todayProteinNum">0</div>
+          <div class="ring-lab">Protein (g)</div>
+          <div class="ring-track"><div class="ring-fill protein" id="proteinFill" style="width:0%;"></div></div>
+          <div class="ring-sub" id="proteinGoalSub"></div>
+        </div>
+      </div>
+      <div class="goals-link" id="goalsLink">set daily goals</div>
+      <div class="goals-edit" id="goalsEdit">
+        <div class="field-row" style="margin-top:10px;">
+          <input type="number" inputmode="decimal" class="text-input" id="calGoalInput" placeholder="Calorie goal">
+          <input type="number" inputmode="decimal" class="text-input" id="proteinGoalInput" placeholder="Protein goal (g)">
+        </div>
+        <button class="add-btn secondary" id="saveGoalsBtn">Save goals</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Log food</div>
+      <div class="field-row">
+        <input type="text" class="text-input" id="foodDesc" placeholder="What did you eat?">
+      </div>
+      <button class="add-btn ai" id="estimateBtn" style="margin-bottom:10px;">✨ Estimate with AI</button>
+      <div class="field-row">
+        <input type="number" inputmode="decimal" class="text-input" id="foodCal" placeholder="Calories">
+        <input type="number" inputmode="decimal" class="text-input" id="foodProtein" placeholder="Protein (g)">
+      </div>
+      <div class="field-row">
+        <input type="time" class="text-input" id="foodTime">
+      </div>
+      <button class="add-btn" id="addFoodBtn">Add to log</button>
+      <div class="ai-out" id="aiStatus"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Quick add</div>
+      <div class="chips" id="quickChipsToday"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Today's log</div>
+      <div id="todayLog"></div>
+    </div>
+  </div>
+
+  <div class="panel" id="progressPanel">
+    <div class="card">
+      <div class="chips" id="periodChips"></div>
+      <div class="nav-row" id="periodNavRow" style="margin-top:14px;">
+        <span class="icon-btn" id="periodPrev">‹</span>
+        <span class="nav-label" id="periodLabel"></span>
+        <span class="icon-btn" id="periodNext">›</span>
+      </div>
+      <div class="today-hero" style="margin-top:16px;">
+        <div class="ring-block">
+          <div class="ring-num" id="avgCalNum">0</div>
+          <div class="ring-lab">Avg cal / day</div>
+        </div>
+        <div class="ring-block">
+          <div class="ring-num" id="avgProteinNum">0</div>
+          <div class="ring-lab">Avg protein / day</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Calories per day</div>
+      <div id="dayBars"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Day-by-day log</div>
+      <div id="periodLog"></div>
+    </div>
+  </div>
+
+  <div class="panel" id="quickPanel">
+    <div class="card">
+      <div class="card-title">Saved quick foods</div>
+      <div class="src-list" id="quickList"></div>
+      <div class="field-row" style="margin-top:12px;">
+        <input type="text" class="text-input" id="qfName" placeholder="Food name">
+      </div>
+      <div class="field-row">
+        <input type="number" inputmode="decimal" class="text-input" id="qfCal" placeholder="Calories">
+        <input type="number" inputmode="decimal" class="text-input" id="qfProtein" placeholder="Protein (g)">
+      </div>
+      <button class="add-btn secondary" id="addQfBtn">Save quick food</button>
+      <div class="hint">Tip: after logging something on the Today tab, it'll offer to save it here automatically.</div>
+    </div>
+  </div>
+
+  <div class="panel" id="syncPanel">
+    <div class="card">
+      <div class="card-title">AI estimate — API key</div>
+      <div class="hint" style="margin-top:0; margin-bottom:10px;">Needed for the "Estimate with AI" button. Get one free at console.anthropic.com. Stored only on this device.</div>
+      <div class="field-row">
+        <input type="password" class="text-input" id="apiKeyInput" placeholder="sk-ant-...">
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Cloud sync</div>
+      <div class="status-row"><div class="sync-dot" id="syncDot2"></div><span id="syncStatusText">Not connected</span></div>
+      <div class="field-row">
+        <input type="text" class="text-input" id="syncUrlInput" placeholder="Apps Script web app URL">
+      </div>
+      <button class="add-btn" id="connectSyncBtn">Connect</button>
+      <button class="add-btn secondary" id="syncNowBtn" style="margin-top:8px;">Sync now</button>
+      <button class="add-btn secondary" id="copyLinkBtn" style="margin-top:8px; display:none;">Copy link for another device</button>
+      <div class="hint" id="lastSyncHint"></div>
+    </div>
+    <div class="hint">Use a fresh Google Sheet + Apps Script deployment for this app (same steps as your other apps, just a new sheet).</div>
+
+    <div class="card">
+      <div class="card-title">Full backup</div>
+      <button class="add-btn secondary" id="exportBackupBtn">Download full backup</button>
+      <div class="field-row" style="margin-top:10px;">
+        <input type="file" accept="application/json" class="text-input" id="restoreFileInput" style="padding:9px 10px;">
+      </div>
+      <button class="add-btn secondary" id="restoreBackupBtn">Restore from backup file</button>
+      <div class="hint" id="restoreStatus"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+
+  let entries = []; // {id, date, time, food, cal, protein}
+  let deletedEntryIds = [];
+  let quickFoods = []; // {id, name, cal, protein}
+  let deletedQfIds = [];
+  let calGoal = 0, proteinGoal = 0;
+  let syncUrl = '';
+  let syncTimer = null;
+
+  let periodMode = 'week';
+  let weekBrowse = startOfWeek(new Date());
+  let monthBrowse = { year: new Date().getFullYear(), month: new Date().getMonth() };
+
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+  function dateKey(d){ return d.toISOString().slice(0,10); }
+  function startOfWeek(d){ const r = new Date(d); r.setHours(0,0,0,0); r.setDate(r.getDate()-r.getDay()); return r; }
+  function escapeHtml(str){ const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+  function fmtTime(t){
+    if(!t) return '';
+    const [h,m] = t.split(':').map(Number);
+    const period = h>=12?'PM':'AM'; const h12 = h%12===0?12:h%12;
+    return `${h12}:${String(m).padStart(2,'0')} ${period}`;
+  }
+
+  function updateClock(){ $('clockTxt').textContent = new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}); }
+  updateClock(); setInterval(updateClock, 30000);
+
+  /* ---------- storage ---------- */
+  function loadLocal(){
+    try{ entries = JSON.parse(localStorage.getItem('fuel_entries') || '[]'); }catch(e){ entries = []; }
+    try{ deletedEntryIds = JSON.parse(localStorage.getItem('fuel_deleted_entries') || '[]'); }catch(e){ deletedEntryIds = []; }
+    try{ quickFoods = JSON.parse(localStorage.getItem('fuel_quickfoods') || '[]'); }catch(e){ quickFoods = []; }
+    try{ deletedQfIds = JSON.parse(localStorage.getItem('fuel_deleted_qf') || '[]'); }catch(e){ deletedQfIds = []; }
+    calGoal = parseFloat(localStorage.getItem('fuel_cal_goal')) || 0;
+    proteinGoal = parseFloat(localStorage.getItem('fuel_protein_goal')) || 0;
+    syncUrl = localStorage.getItem('fuel_sync_url') || '';
+    const savedKey = localStorage.getItem('fuel_api_key');
+    if(savedKey) $('apiKeyInput').value = savedKey;
+  }
+  function saveLocal(){
+    localStorage.setItem('fuel_entries', JSON.stringify(entries));
+    localStorage.setItem('fuel_deleted_entries', JSON.stringify(deletedEntryIds));
+    localStorage.setItem('fuel_quickfoods', JSON.stringify(quickFoods));
+    localStorage.setItem('fuel_deleted_qf', JSON.stringify(deletedQfIds));
+  }
+
+  /* ---------- cloud sync ---------- */
+  function setSyncStatus(state, text){
+    [$('syncDot'), $('syncDot2')].forEach(d => { d.className = 'sync-dot' + (state ? ' ' + state : ''); });
+    if(text) $('syncStatusText').textContent = text;
+  }
+  function mergeState(remote){
+    if(!remote || typeof remote !== 'object') return;
+    const remoteEntries = Array.isArray(remote.entries) ? remote.entries : [];
+    const remoteDelEntries = Array.isArray(remote.deletedEntryIds) ? remote.deletedEntryIds : [];
+    const remoteQf = Array.isArray(remote.quickFoods) ? remote.quickFoods : [];
+    const remoteDelQf = Array.isArray(remote.deletedQfIds) ? remote.deletedQfIds : [];
+
+    const entById = {}; entries.forEach(e => entById[e.id]=e);
+    remoteEntries.forEach(e => { if(!entById[e.id]) entById[e.id]=e; });
+    deletedEntryIds = Array.from(new Set([...deletedEntryIds, ...remoteDelEntries]));
+    entries = Object.values(entById).filter(e => !deletedEntryIds.includes(e.id));
+
+    const qfById = {}; quickFoods.forEach(q => qfById[q.id]=q);
+    remoteQf.forEach(q => { if(!qfById[q.id]) qfById[q.id]=q; });
+    deletedQfIds = Array.from(new Set([...deletedQfIds, ...remoteDelQf]));
+    quickFoods = Object.values(qfById).filter(q => !deletedQfIds.includes(q.id));
+
+    saveLocal();
+  }
+  function currentPayload(){
+    return { entries, deletedEntryIds, quickFoods, deletedQfIds, updatedAt: new Date().toISOString() };
+  }
+  async function pullFromCloud(){
+    if(!syncUrl) return;
+    setSyncStatus('busy','Syncing…');
+    try{
+      const res = await fetch(syncUrl + (syncUrl.includes('?')?'&':'?') + '_=' + Date.now());
+      const data = await res.json();
+      mergeState(data);
+      await pushToCloud(true);
+      setSyncStatus('ok','Synced');
+      $('lastSyncHint').textContent = 'Last synced ' + new Date().toLocaleTimeString('en-US');
+      renderAll();
+    }catch(e){ setSyncStatus('err','Sync failed — check the URL or your connection'); }
+  }
+  async function pushToCloud(silent){
+    if(!syncUrl) return;
+    if(!silent) setSyncStatus('busy','Syncing…');
+    try{
+      await fetch(syncUrl, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(currentPayload()) });
+      if(!silent){ setSyncStatus('ok','Synced'); $('lastSyncHint').textContent = 'Last synced ' + new Date().toLocaleTimeString('en-US'); }
+    }catch(e){ if(!silent) setSyncStatus('err','Sync failed — check the URL or your connection'); }
+  }
+  function startAutoSync(){
+    if(syncTimer) clearInterval(syncTimer);
+    if(!syncUrl) return;
+    syncTimer = setInterval(pullFromCloud, 20000);
+    document.addEventListener('visibilitychange', () => { if(document.visibilityState==='visible') pullFromCloud(); });
+  }
+  $('connectSyncBtn').addEventListener('click', async () => {
+    const val = $('syncUrlInput').value.trim();
+    if(!val){ setSyncStatus('err','Paste a URL first'); return; }
+    syncUrl = val; localStorage.setItem('fuel_sync_url', syncUrl);
+    $('copyLinkBtn').style.display = 'block';
+    await pullFromCloud(); startAutoSync();
+  });
+  $('syncNowBtn').addEventListener('click', () => pullFromCloud());
+  $('copyLinkBtn').addEventListener('click', async () => {
+    try{ await navigator.clipboard.writeText(syncUrl); $('copyLinkBtn').textContent='Copied!'; setTimeout(()=>{ $('copyLinkBtn').textContent='Copy link for another device'; },1500); }
+    catch(e){ alert(syncUrl); }
+  });
+  $('exportBackupBtn').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(currentPayload(), null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href=url; a.download = `fuel-backup-${new Date().toISOString().slice(0,10)}.json`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  });
+  $('restoreBackupBtn').addEventListener('click', () => {
+    const file = $('restoreFileInput').files[0];
+    if(!file){ $('restoreStatus').textContent='Choose a backup file first.'; return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      try{ mergeState(JSON.parse(reader.result)); renderAll(); pushToCloud(true); $('restoreStatus').textContent='Restored.'; }
+      catch(e){ $('restoreStatus').textContent='Could not read that file.'; }
+    };
+    reader.readAsText(file);
+  });
+  $('apiKeyInput').addEventListener('change', () => { localStorage.setItem('fuel_api_key', $('apiKeyInput').value.trim()); });
+
+  /* ---------- tabs ---------- */
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p=>p.classList.remove('visible'));
+      tab.classList.add('active');
+      $(tab.dataset.panel).classList.add('visible');
+      if(tab.dataset.panel === 'progressPanel') renderProgress();
+      if(tab.dataset.panel === 'quickPanel') renderQuickList();
+    });
+  });
+
+  /* ---------- goals ---------- */
+  $('goalsLink').addEventListener('click', () => {
+    $('goalsEdit').classList.toggle('visible');
+    $('calGoalInput').value = calGoal || '';
+    $('proteinGoalInput').value = proteinGoal || '';
+  });
+  $('saveGoalsBtn').addEventListener('click', () => {
+    calGoal = parseFloat($('calGoalInput').value) || 0;
+    proteinGoal = parseFloat($('proteinGoalInput').value) || 0;
+    localStorage.setItem('fuel_cal_goal', calGoal);
+    localStorage.setItem('fuel_protein_goal', proteinGoal);
+    $('goalsEdit').classList.remove('visible');
+    renderToday();
+  });
+
+  /* ---------- AI estimate ---------- */
+  $('estimateBtn').addEventListener('click', async () => {
+    const desc = $('foodDesc').value.trim();
+    const key = $('apiKeyInput').value.trim();
+    if(!desc){ $('aiStatus').textContent = 'Describe what you ate first.'; return; }
+    if(!key){ $('aiStatus').textContent = 'Add your Anthropic API key in the Sync tab first.'; return; }
+    $('estimateBtn').disabled = true; $('estimateBtn').textContent = 'Estimating…';
+    $('aiStatus').textContent = '';
+    try{
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json', 'x-api-key': key,
+          'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-5', max_tokens: 150,
+          messages: [{ role: 'user', content: `Estimate the total calories and protein (grams) for this food/meal: "${desc}". Respond with ONLY a JSON object, no other text, in exactly this format: {"calories": number, "protein": number}` }]
+        })
+      });
+      const data = await res.json();
+      if(data.error){ $('aiStatus').textContent = 'Error: ' + data.error.message; }
+      else {
+        const text = (data.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('');
+        const match = text.match(/\{[\s\S]*\}/);
+        if(match){
+          const parsed = JSON.parse(match[0]);
+          $('foodCal').value = Math.round(parsed.calories);
+          $('foodProtein').value = Math.round(parsed.protein);
+          $('aiStatus').textContent = 'Estimated — feel free to adjust before adding.';
+        } else {
+          $('aiStatus').textContent = 'Could not parse an estimate — enter manually.';
+        }
+      }
+    }catch(e){
+      $('aiStatus').textContent = 'Request failed: ' + (e && e.message ? e.message : e);
+      console.error('Fuel AI estimate error:', e);
+    }
+    $('estimateBtn').disabled = false; $('estimateBtn').textContent = '✨ Estimate with AI';
+  });
+
+  /* ---------- log food ---------- */
+  $('addFoodBtn').addEventListener('click', () => {
+    const food = $('foodDesc').value.trim();
+    const cal = parseFloat($('foodCal').value);
+    const protein = parseFloat($('foodProtein').value) || 0;
+    const time = $('foodTime').value || new Date().toTimeString().slice(0,5);
+    if(!food || !(cal >= 0)){ alert('Enter a food and calories.'); return; }
+    const now = new Date();
+    entries.unshift({ id: uid(), date: dateKey(now), time, food, cal, protein });
+    saveLocal();
+    $('foodDesc').value=''; $('foodCal').value=''; $('foodProtein').value=''; $('aiStatus').textContent='';
+    renderToday();
+    pushToCloud(true);
+    if(!quickFoods.some(q => q.name.toLowerCase() === food.toLowerCase())){
+      if(confirm(`Save "${food}" as a quick food for next time?`)){
+        quickFoods.push({ id: uid(), name: food, cal, protein });
+        saveLocal(); pushToCloud(true);
+      }
+    }
+  });
+
+  function deleteEntry(id){
+    entries = entries.filter(e => e.id !== id);
+    deletedEntryIds.push(id);
+    saveLocal(); renderToday(); pushToCloud(true);
+  }
+
+  function todaysEntries(){
+    const tk = dateKey(new Date());
+    return entries.filter(e => e.date === tk).sort((a,b) => (b.time||'').localeCompare(a.time||''));
+  }
+
+  function renderToday(){
+    const list = todaysEntries();
+    const totalCal = list.reduce((s,e)=>s+e.cal,0);
+    const totalProtein = list.reduce((s,e)=>s+e.protein,0);
+    $('todayCalNum').textContent = Math.round(totalCal);
+    $('todayProteinNum').textContent = Math.round(totalProtein) + 'g';
+    $('calFill').style.width = calGoal ? Math.min(100, totalCal/calGoal*100) + '%' : '0%';
+    $('proteinFill').style.width = proteinGoal ? Math.min(100, totalProtein/proteinGoal*100) + '%' : '0%';
+    $('calGoalSub').textContent = calGoal ? `of ${calGoal} goal` : '';
+    $('proteinGoalSub').textContent = proteinGoal ? `of ${proteinGoal}g goal` : '';
+
+    const el = $('todayLog');
+    el.innerHTML = list.length === 0 ? '<div class="empty">Nothing logged yet today.</div>' : list.map(e => `
+      <div class="entry-row">
+        <div class="entry-left">
+          <span class="entry-time">${fmtTime(e.time)}</span>
+          <span class="entry-food">${escapeHtml(e.food)}</span>
+        </div>
+        <div class="entry-macros">
+          <span class="entry-cal">${Math.round(e.cal)} cal</span>
+          <span class="entry-protein">${Math.round(e.protein)}g</span>
+          <span class="entry-del" data-id="${e.id}">×</span>
+        </div>
+      </div>
+    `).join('');
+    el.querySelectorAll('.entry-del').forEach(btn => btn.addEventListener('click', () => deleteEntry(btn.dataset.id)));
+
+    renderQuickChips();
+  }
+
+  function renderQuickChips(){
+    const el = $('quickChipsToday');
+    if(quickFoods.length === 0){ el.innerHTML = '<div class="hint" style="margin-top:0;">Save foods below in Quick Foods, or log something once here to get the option.</div>'; return; }
+    el.innerHTML = quickFoods.map(q => `
+      <div class="quick-chip" data-id="${q.id}"><span class="n">${escapeHtml(q.name)}</span><span class="m">${Math.round(q.cal)}cal · ${Math.round(q.protein)}g</span></div>
+    `).join('');
+    el.querySelectorAll('.quick-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const q = quickFoods.find(x => x.id === chip.dataset.id);
+        if(!q) return;
+        entries.unshift({ id: uid(), date: dateKey(new Date()), time: new Date().toTimeString().slice(0,5), food: q.name, cal: q.cal, protein: q.protein });
+        saveLocal(); renderToday(); pushToCloud(true);
+      });
+    });
+  }
+
+  /* ---------- quick foods management ---------- */
+  function renderQuickList(){
+    const el = $('quickList');
+    if(quickFoods.length === 0){ el.innerHTML = '<div class="empty">No quick foods saved yet.</div>'; return; }
+    el.innerHTML = quickFoods.map(q => `
+      <div class="src-item">
+        <span class="src-name">${escapeHtml(q.name)} — ${Math.round(q.cal)} cal, ${Math.round(q.protein)}g protein</span>
+        <span class="src-del" data-id="${q.id}">×</span>
+      </div>
+    `).join('');
+    el.querySelectorAll('.src-del').forEach(btn => {
+      btn.addEventListener('click', () => {
+        quickFoods = quickFoods.filter(q => q.id !== btn.dataset.id);
+        deletedQfIds.push(btn.dataset.id);
+        saveLocal(); renderQuickList(); pushToCloud(true);
+      });
+    });
+  }
+  $('addQfBtn').addEventListener('click', () => {
+    const name = $('qfName').value.trim();
+    const cal = parseFloat($('qfCal').value);
+    const protein = parseFloat($('qfProtein').value) || 0;
+    if(!name || !(cal >= 0)){ alert('Enter a name and calories.'); return; }
+    quickFoods.push({ id: uid(), name, cal, protein });
+    $('qfName').value=''; $('qfCal').value=''; $('qfProtein').value='';
+    saveLocal(); renderQuickList(); pushToCloud(true);
+  });
+
+  /* ---------- progress ---------- */
+  function renderPeriodChips(){
+    const modes = [['week','Weekly'],['month','Monthly'],['custom','Custom']];
+    $('periodChips').innerHTML = modes.map(([k,l]) => `<div class="chip ${periodMode===k?'active':''}" data-mode="${k}">${l}</div>`).join('');
+    $('periodChips').querySelectorAll('.chip').forEach(chip => {
+      chip.addEventListener('click', () => { periodMode = chip.dataset.mode; renderPeriodChips(); renderProgress(); });
+    });
+    $('periodNavRow').style.display = periodMode === 'custom' ? 'none' : 'flex';
+  }
+  function currentRange(){
+    if(periodMode === 'week'){
+      const start = new Date(weekBrowse); const end = new Date(start); end.setDate(start.getDate()+6);
+      return { start: dateKey(start), end: dateKey(end), label: start.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' – ' + end.toLocaleDateString('en-US',{month:'short',day:'numeric'}) };
+    }
+    if(periodMode === 'month'){
+      const start = new Date(monthBrowse.year, monthBrowse.month, 1);
+      const end = new Date(monthBrowse.year, monthBrowse.month+1, 0);
+      return { start: dateKey(start), end: dateKey(end), label: start.toLocaleDateString('en-US',{month:'long',year:'numeric'}) };
+    }
+    return { start: '0000-01-01', end: '9999-12-31', label: 'All time' };
+  }
+  $('periodPrev').addEventListener('click', () => { shiftPeriod(-1); });
+  $('periodNext').addEventListener('click', () => { shiftPeriod(1); });
+  function shiftPeriod(dir){
+    if(periodMode==='week'){ weekBrowse.setDate(weekBrowse.getDate()+dir*7); }
+    else if(periodMode==='month'){ monthBrowse.month+=dir; if(monthBrowse.month<0){monthBrowse.month=11;monthBrowse.year--;} if(monthBrowse.month>11){monthBrowse.month=0;monthBrowse.year++;} }
+    renderProgress();
+  }
+
+  function renderProgress(){
+    renderPeriodChips();
+    const range = currentRange();
+    $('periodLabel').textContent = range.label;
+    const list = entries.filter(e => e.date >= range.start && e.date <= range.end);
+
+    const byDate = {};
+    list.forEach(e => { if(!byDate[e.date]) byDate[e.date] = { cal:0, protein:0, items:[] }; byDate[e.date].cal += e.cal; byDate[e.date].protein += e.protein; byDate[e.date].items.push(e); });
+    const dateKeys = Object.keys(byDate).sort();
+    const numDays = Math.max(dateKeys.length, 1);
+    const totalCal = list.reduce((s,e)=>s+e.cal,0);
+    const totalProtein = list.reduce((s,e)=>s+e.protein,0);
+    $('avgCalNum').textContent = Math.round(totalCal/numDays);
+    $('avgProteinNum').textContent = Math.round(totalProtein/numDays) + 'g';
+
+    const maxCal = Math.max(...dateKeys.map(k => byDate[k].cal), 1);
+    $('dayBars').innerHTML = dateKeys.length === 0 ? '<div class="empty">Nothing logged in this period.</div>' : dateKeys.slice().reverse().map(k => {
+      const d = new Date(k+'T12:00:00');
+      return `
+        <div class="bd-row">
+          <div class="bd-top"><span class="bd-name">${d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</span><span class="bd-amt">${Math.round(byDate[k].cal)} cal</span></div>
+          <div class="bd-track"><div class="bd-fill" style="width:${byDate[k].cal/maxCal*100}%"></div></div>
+        </div>
+      `;
+    }).join('');
+
+    $('periodLog').innerHTML = dateKeys.length === 0 ? '<div class="empty">Nothing logged in this period.</div>' : dateKeys.slice().reverse().map(k => {
+      const d = new Date(k+'T12:00:00');
+      const items = byDate[k].items.sort((a,b) => (a.time||'').localeCompare(b.time||''));
+      return `
+        <div style="margin-top:14px;">
+          <div class="hint" style="margin-top:0; margin-bottom:6px; color:var(--text-dim); font-weight:600;">${d.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'})} — ${Math.round(byDate[k].cal)} cal, ${Math.round(byDate[k].protein)}g protein</div>
+          ${items.map(e => `
+            <div class="entry-row">
+              <div class="entry-left"><span class="entry-time">${fmtTime(e.time)}</span><span class="entry-food">${escapeHtml(e.food)}</span></div>
+              <div class="entry-macros"><span class="entry-cal">${Math.round(e.cal)} cal</span><span class="entry-protein">${Math.round(e.protein)}g</span></div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }).join('');
+  }
+
+  function renderAll(){
+    renderToday();
+    renderQuickList();
+  }
+
+  /* ---------- init ---------- */
+  (function init(){
+    loadLocal();
+    $('foodTime').value = new Date().toTimeString().slice(0,5);
+    renderAll();
+    if(syncUrl){
+      $('syncUrlInput').value = syncUrl;
+      $('copyLinkBtn').style.display = 'block';
+      setSyncStatus('ok','Connected');
+      pullFromCloud();
+      startAutoSync();
+    }
+  })();
+})();
+</script>
+</body>
+</html>
